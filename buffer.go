@@ -1,5 +1,9 @@
 package moof
 
+import (
+	"strings"
+)
+
 type Buffer struct {
 	s []rune
 	i int
@@ -18,6 +22,10 @@ func (b Buffer) Duplicate() *Buffer {
 	}
 }
 
+func (b Buffer) GetAll() string {
+	return string(b.s[b.i:])
+}
+
 func (b Buffer) GetRune() rune {
 	if b.Len() < 1 {
 		return -1
@@ -26,11 +34,15 @@ func (b Buffer) GetRune() rune {
 }
 
 func (b Buffer) GetString(l int) string {
-	return string(b.s[b.i:min(len(b.s), b.i + l)])
+	return string(b.s[b.i:min(len(b.s), b.i+l)])
 }
 
 func (b Buffer) Len() int {
 	return len(b.s) - b.i
+}
+
+func (b Buffer) Pos() int {
+	return b.i
 }
 
 func (b *Buffer) Consume(l int) bool {
@@ -41,31 +53,47 @@ func (b *Buffer) Consume(l int) bool {
 	return true
 }
 
+func (b *Buffer) MustConsume(l int) {
+	if !b.Consume(l) {
+		panic("MustConsume()")
+	}
+}
+
 func (b *Buffer) ConsumeString(s string) bool {
 	if b.GetString(len(s)) != s {
 		return false
 	}
-	return b.Consume(len(s))
+	b.MustConsume(len(s))
+	return true
 }
 
-func (b *Buffer) ConsumeOneOf(chars string) bool {
+func (b *Buffer) ConsumeOneOf(chars string) string {
 	if b.Len() < 1 {
-		return false
+		return ""
 	}
 	r := b.GetRune()
 	for _, char := range chars {
 		if r == char {
 			b.Consume(1)
-			return true
+			return string(r)
 		}
 	}
-	return false
+	return ""
 }
 
-func (b *Buffer) ConsumeOneOrMoreOf(chars string) bool {
-	if !b.ConsumeOneOf(chars) {
-		return false
+func (b *Buffer) ConsumeManyOf(chars string) string {
+	s := []string{}
+	c := b.ConsumeOneOf(chars)
+	if c == "" {
+		return ""
 	}
-	for b.ConsumeOneOf(chars) {}
-	return true
+	s = append(s, c)
+	for {
+		c = b.ConsumeOneOf(chars)
+		if c == "" {
+			break
+		}
+		s = append(s, c)
+	}
+	return strings.Join(s, "")
 }

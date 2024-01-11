@@ -1,61 +1,171 @@
 package moof
 
 import (
-	"bytes"
+	"fmt"
 )
 
-type NodeType int
-const (
-	For NodeType = iota
-)
+const base10FirstChars = "123456789"
+const base10Chars = base10FirstChars + "0"
 
-type Node struct {
-	Type NodeType
-	Content []byte
+const variableFirstChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+const variableChars = variableFirstChars + "0123456789"
+
+const whitespace = " \t\n"
+
+type Parser struct {
+	Err string
+	Pos int
 }
 
-type AST struct {
-	Raw []*Node
+type NodeAssignment struct {
+	LHS        *NodeLHS
+	Expression *NodeExpression
 }
 
-func Parse(data []byte) *AST {
-	return nil
+type NodeExpression struct {
+	// One of
+	IntLiteral *NodeIntLiteral
 }
 
-var tFor = newStringToken("for", For)
-
-type token interface {
-	match([]byte) (*AST, int, error)
+type NodeIntLiteral struct {
+	Value int64
 }
 
-type tokenEmbed struct {
-	next []*token
+type NodeLHS struct {
+	Value string
 }
 
-func (te *tokenEmbed) addNext(t *token) {
-	te.next = append(te.next, t)
+type NodeRoot struct {
+	Statements []*NodeStatement
 }
 
-type stringToken struct {
-	tokenEmbed
-	b []byte
-	typ NodeType
+type NodeStatement struct {
+	// One of
+	Assignment *NodeAssignment
 }
 
-func newStringToken(str string, typ NodeType) *stringToken {
-	return &stringToken{
-		b: []byte(str),
-		typ: typ,
+func Parse(s string) (*NodeRoot, error) {
+	n := &NodeRoot{}
+	b := NewBuffer(s)
+	p := &Parser{}
+
+	for b.Len() > 0 {
+		p.ConsumeWhitespace(b)
+
+		s := p.ParseStatement(b)
+		if s == nil {
+			return nil, fmt.Errorf("pos=%d: %s", p.Pos, p.Err)
+		}
+
+		n.Statements = append(n.Statements, s)
+
+		p.ConsumeWhitespace(b)
 	}
+
+	return n, nil
 }
 
-func (st stringToken) match(b []byte, typ NodeType) *Node {
-	if !bytes.HasPrefix(b, st.b) {
+func (p *Parser) Error(b *Buffer, err string) {
+	if b.Pos() < p.Pos {
+		return
+	}
+	p.Err = err
+	p.Pos = b.Pos()
+
+}
+
+func (p *Parser) ConsumeWhitespace(b *Buffer) {
+	b.ConsumeManyOf(whitespace)
+}
+
+func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
+	n := &NodeAssignment{}
+
+	n.LHS = p.ParseLHS(b)
+	if n.LHS == nil {
 		return nil
 	}
 
-	return &Node{
-		Type: st.typ,
-		Content: st.b,
+	p.ConsumeWhitespace(b)
+
+	if !b.ConsumeString("=") {
+		p.Error(b, "missing: =")
+		return nil
 	}
+
+	p.ConsumeWhitespace(b)
+
+	n.Expression = p.ParseExpression(b)
+	if n.Expression == nil {
+		return nil
+	}
+
+	return n
+}
+
+func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {
+	n := &NodeExpression{}
+
+	p.ConsumeWhitespace(b)
+
+	b2 := b.Duplicate()
+	n.IntLiteral = p.ParseIntLiteral(b2)
+	if n.IntLiteral != nil {
+		*b = *b2
+		return n
+	}
+
+	p.Error(b, "invalid expression")
+	return nil
+}
+
+func (p *Parser) ParseIntLiteral(b *Buffer) *NodeIntLiteral {
+	n := &NodeIntLiteral{}
+
+	p.ConsumeWhitespace(b)
+
+	s := b.ConsumeOneOf(base10FirstChars)
+	if s == "" {
+		p.Error(b, "invalid decimal")
+		return nil
+	}
+
+	s += b.ConsumeManyOf(base10Chars)
+
+	for _, c := range s {
+		n.Value *= 10
+		n.Value += int64(c - '0')
+	}
+
+	return n
+}
+
+func (p *Parser) ParseLHS(b *Buffer) *NodeLHS {
+	n := &NodeLHS{}
+
+	p.ConsumeWhitespace(b)
+
+	n.Value = b.ConsumeOneOf(variableFirstChars)
+	if n.Value == "" {
+		p.Error(b, "invalid left hand side of assignment")
+		return nil
+	}
+
+	n.Value += b.ConsumeManyOf(variableChars)
+
+	return n
+}
+
+func (p *Parser) ParseStatement(b *Buffer) *NodeStatement {
+	n := &NodeStatement{}
+
+	b2 := b.Duplicate()
+	n.Assignment = p.ParseAssignment(b2)
+	if n.Assignment != nil {
+		*b = *b2
+		return n
+	}
+
+	p.Error(b, "invalid statement")
+	return nil
 }
