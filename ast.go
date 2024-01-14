@@ -4,13 +4,12 @@ import (
 	"fmt"
 )
 
-const base10FirstChars = "123456789"
-const base10Chars = base10FirstChars + "0"
+const base10Chars = "0123456789"
 
-const variableFirstChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-const variableChars = variableFirstChars + "0123456789"
+const whitespaceChars = " \t\n"
 
-const whitespace = " \t\n"
+const reservedChars = whitespaceChars + "\".(){}%&="
+const reservedFirstChars = reservedChars + base10Chars
 
 type Parser struct {
 	Err string
@@ -75,7 +74,7 @@ func (p *Parser) Error(b *Buffer, err string) {
 }
 
 func (p *Parser) ConsumeWhitespace(b *Buffer) {
-	b.ConsumeManyOf(whitespace)
+	b.ConsumeManyOf(whitespaceChars)
 }
 
 func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
@@ -124,13 +123,11 @@ func (p *Parser) ParseIntLiteral(b *Buffer) *NodeIntLiteral {
 
 	p.ConsumeWhitespace(b)
 
-	s := b.ConsumeOneOf(base10FirstChars)
+	s := b.ConsumeManyOf(base10Chars)
 	if s == "" {
-		p.Error(b, "invalid decimal")
+		p.Error(b, "invalid integer literal")
 		return nil
 	}
-
-	s += b.ConsumeManyOf(base10Chars)
 
 	for _, c := range s {
 		n.Value *= 10
@@ -145,13 +142,13 @@ func (p *Parser) ParseLHS(b *Buffer) *NodeLHS {
 
 	p.ConsumeWhitespace(b)
 
-	n.Value = b.ConsumeOneOf(variableFirstChars)
+	n.Value = b.ConsumeOneNotOf(reservedFirstChars)
 	if n.Value == "" {
 		p.Error(b, "invalid left hand side of assignment")
 		return nil
 	}
 
-	n.Value += b.ConsumeManyOf(variableChars)
+	n.Value += b.ConsumeManyNotOf(reservedChars)
 
 	return n
 }

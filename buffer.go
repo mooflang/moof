@@ -81,15 +81,36 @@ func (b *Buffer) ConsumeOneOf(chars string) string {
 	return ""
 }
 
-func (b *Buffer) ConsumeManyOf(chars string) string {
-	s := []string{}
-	c := b.ConsumeOneOf(chars)
-	if c == "" {
+func (b *Buffer) ConsumeOneNotOf(chars string) string {
+	if b.Len() < 1 {
 		return ""
 	}
-	s = append(s, c)
+	r := b.GetRune()
+	for _, char := range chars {
+		if r == char {
+			return ""
+		}
+	}
+	b.Consume(1)
+	return string(r)
+}
+
+func (b *Buffer) ConsumeManyOf(chars string) string {
+	s := []string{}
 	for {
-		c = b.ConsumeOneOf(chars)
+		c := b.ConsumeOneOf(chars)
+		if c == "" {
+			break
+		}
+		s = append(s, c)
+	}
+	return strings.Join(s, "")
+}
+
+func (b *Buffer) ConsumeManyNotOf(chars string) string {
+	s := []string{}
+	for {
+		c := b.ConsumeOneNotOf(chars)
 		if c == "" {
 			break
 		}
