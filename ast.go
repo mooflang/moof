@@ -31,7 +31,8 @@ type NodeIntLiteral struct {
 }
 
 type NodeLHS struct {
-	Value string
+	// One of
+	SymbolName *NodeSymbolName
 }
 
 type NodeRoot struct {
@@ -43,22 +44,17 @@ type NodeStatement struct {
 	Assignment *NodeAssignment
 }
 
+type NodeSymbolName struct {
+	Value string
+}
+
 func Parse(s string) (*NodeRoot, error) {
-	n := &NodeRoot{}
-	b := NewBuffer(s)
 	p := &Parser{}
+	b := NewBuffer(s)
 
-	for b.Len() > 0 {
-		p.ConsumeWhitespace(b)
-
-		s := p.ParseStatement(b)
-		if s == nil {
-			return nil, fmt.Errorf("pos=%d: %s", p.Pos, p.Err)
-		}
-
-		n.Statements = append(n.Statements, s)
-
-		p.ConsumeWhitespace(b)
+	n := p.ParseRoot(b)
+	if n == nil {
+		return nil, fmt.Errorf("pos=%d: %s", p.Pos, p.Err)
 	}
 
 	return n, nil
@@ -92,8 +88,6 @@ func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
 		return nil
 	}
 
-	p.ConsumeWhitespace(b)
-
 	n.Expression = p.ParseExpression(b)
 	if n.Expression == nil {
 		return nil
@@ -105,8 +99,6 @@ func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
 func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {
 	n := &NodeExpression{}
 
-	p.ConsumeWhitespace(b)
-
 	b2 := b.Duplicate()
 	n.IntLiteral = p.ParseIntLiteral(b2)
 	if n.IntLiteral != nil {
@@ -114,7 +106,6 @@ func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {
 		return n
 	}
 
-	p.Error(b, "invalid expression")
 	return nil
 }
 
@@ -137,20 +128,34 @@ func (p *Parser) ParseIntLiteral(b *Buffer) *NodeIntLiteral {
 	return n
 }
 
+func (p *Parser) ParseRoot(b *Buffer) *NodeRoot {
+	n := &NodeRoot{}
+
+	for b.Len() > 0 {
+		s := p.ParseStatement(b)
+		if s == nil {
+			return nil
+		}
+
+		n.Statements = append(n.Statements, s)
+
+		p.ConsumeWhitespace(b)
+	}
+
+	return n
+}
+
 func (p *Parser) ParseLHS(b *Buffer) *NodeLHS {
 	n := &NodeLHS{}
 
-	p.ConsumeWhitespace(b)
-
-	n.Value = b.ConsumeOneNotOf(reservedFirstChars)
-	if n.Value == "" {
-		p.Error(b, "invalid left hand side of assignment")
-		return nil
+	b2 := b.Duplicate()
+	n.SymbolName = p.ParseSymbolName(b2)
+	if n.SymbolName != nil {
+		*b = *b2
+		return n
 	}
 
-	n.Value += b.ConsumeManyNotOf(reservedChars)
-
-	return n
+	return nil
 }
 
 func (p *Parser) ParseStatement(b *Buffer) *NodeStatement {
@@ -163,6 +168,21 @@ func (p *Parser) ParseStatement(b *Buffer) *NodeStatement {
 		return n
 	}
 
-	p.Error(b, "invalid statement")
 	return nil
+}
+
+func (p *Parser) ParseSymbolName(b *Buffer) *NodeSymbolName {
+	n := &NodeSymbolName{}
+
+	p.ConsumeWhitespace(b)
+
+	n.Value = b.ConsumeOneNotOf(reservedFirstChars)
+	if n.Value == "" {
+		p.Error(b, "invalid symbol name")
+		return nil
+	}
+
+	n.Value += b.ConsumeManyNotOf(reservedChars)
+
+	return n
 }
