@@ -18,7 +18,7 @@ type Parser struct {
 	Char string
 }
 
-type NodeArgument struct {
+type NodeCallArgument struct {
 	Name  *NodeSymbolName
 	Value *NodeExpression
 }
@@ -37,10 +37,10 @@ type NodeBlockRun struct {
 }
 
 type NodeCall struct {
-	Reference    *NodeReference
-	Arguments    []*NodeArgument
-	BlockCompile *NodeBlockCompile
-	BlockRun     *NodeBlockRun
+	Reference     *NodeReference
+	CallArguments []*NodeCallArgument
+	BlockCompile  *NodeBlockCompile
+	BlockRun      *NodeBlockRun
 }
 
 type NodeExpression struct {
@@ -107,8 +107,8 @@ func (p *Parser) Error(b *Buffer, err string) {
 	p.Char = b.GetString(1)
 }
 
-func (p *Parser) ParseArgument(b *Buffer) *NodeArgument {
-	n := &NodeArgument{}
+func (p *Parser) ParseCallArgument(b *Buffer) *NodeCallArgument {
+	n := &NodeCallArgument{}
 
 	n.Value = p.ParseExpression(b)
 	if n.Value == nil {
@@ -118,8 +118,8 @@ func (p *Parser) ParseArgument(b *Buffer) *NodeArgument {
 	return n
 }
 
-func (p *Parser) ParseArgumentNamed(b *Buffer) *NodeArgument {
-	n := &NodeArgument{}
+func (p *Parser) ParseCallArgumentNamed(b *Buffer) *NodeCallArgument {
+	n := &NodeCallArgument{}
 
 	n.Name = p.ParseSymbolName(b)
 	if n.Name == nil {
@@ -141,8 +141,8 @@ func (p *Parser) ParseArgumentNamed(b *Buffer) *NodeArgument {
 	return n
 }
 
-func (p *Parser) ParseArguments(b *Buffer) []*NodeArgument {
-	args := []*NodeArgument{}
+func (p *Parser) ParseCallArguments(b *Buffer) []*NodeCallArgument {
+	args := []*NodeCallArgument{}
 
 	consumeWhitespace(b)
 
@@ -159,7 +159,7 @@ func (p *Parser) ParseArguments(b *Buffer) []*NodeArgument {
 		}
 
 		b2 := b.Duplicate()
-		arg := p.ParseArgumentNamed(b2)
+		arg := p.ParseCallArgumentNamed(b2)
 		if arg != nil {
 			args = append(args, arg)
 			*b = *b2
@@ -167,7 +167,7 @@ func (p *Parser) ParseArguments(b *Buffer) []*NodeArgument {
 		}
 
 		b2 = b.Duplicate()
-		arg = p.ParseArgument(b2)
+		arg = p.ParseCallArgument(b2)
 		if arg != nil {
 			args = append(args, arg)
 			*b = *b2
@@ -274,8 +274,8 @@ func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 	}
 
 	b2 := b.Duplicate()
-	n.Arguments = p.ParseArguments(b2)
-	if n.Arguments != nil {
+	n.CallArguments = p.ParseCallArguments(b2)
+	if n.CallArguments != nil {
 		*b = *b2
 	}
 
@@ -293,7 +293,7 @@ func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 		}
 	}
 
-	if n.Arguments == nil &&
+	if n.CallArguments == nil &&
 		n.BlockCompile == nil &&
 		n.BlockRun == nil {
 		p.Error(b, "missing: (, {, {%")
