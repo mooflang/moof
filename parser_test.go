@@ -17,6 +17,10 @@ e = b.+
 f = b.+(1)
 g = b.+(foo: 3)
 b.foo(2)
+b.foo() {}
+b.foo() {%
+	h = 5
+%}
 `)
 	require.NoError(t, err)
 }

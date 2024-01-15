@@ -28,9 +28,19 @@ type NodeAssignment struct {
 	Expression *NodeExpression
 }
 
+type NodeBlockCompile struct {
+	Statements []*NodeStatement
+}
+
+type NodeBlockRun struct {
+	Statements []*NodeStatement
+}
+
 type NodeCall struct {
-	Reference *NodeReference
-	Arguments []*NodeArgument
+	Reference              *NodeReference
+	Arguments              []*NodeArgument
+	TrailingClosureCompile *NodeBlockCompile
+	TrailingClosureRun     *NodeBlockRun
 }
 
 type NodeExpression struct {
@@ -129,6 +139,38 @@ func (p *Parser) ParseArgumentNamed(b *Buffer) *NodeArgument {
 	return n
 }
 
+func (p *Parser) ParseArguments(b *Buffer) []*NodeArgument {
+	args := []*NodeArgument{}
+
+	for !b.Empty() {
+		consumeWhitespace(b)
+
+		if b.ConsumeString(")") {
+			return args
+		}
+
+		b2 := b.Duplicate()
+		arg := p.ParseArgumentNamed(b2)
+		if arg != nil {
+			args = append(args, arg)
+			*b = *b2
+			continue
+		}
+
+		b2 = b.Duplicate()
+		arg = p.ParseArgument(b2)
+		if arg != nil {
+			args = append(args, arg)
+			*b = *b2
+			continue
+		}
+
+		return nil
+	}
+
+	return nil
+}
+
 func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
 	n := &NodeAssignment{}
 
@@ -152,6 +194,54 @@ func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
 	return n
 }
 
+func (p *Parser) ParseBlockCompile(b *Buffer) *NodeBlockCompile {
+	n := &NodeBlockCompile{}
+
+	// TODO: Args, return value
+
+	for !b.Empty() {
+		consumeWhitespace(b)
+
+		if b.ConsumeString("%}") {
+			return n
+		}
+
+		s := p.ParseStatement(b)
+		if s == nil {
+			return nil
+		}
+
+		n.Statements = append(n.Statements, s)
+	}
+
+	p.Error(b, "missing: %}")
+	return nil
+}
+
+func (p *Parser) ParseBlockRun(b *Buffer) *NodeBlockRun {
+	n := &NodeBlockRun{}
+
+	// TODO: Args, return value
+
+	for !b.Empty() {
+		consumeWhitespace(b)
+
+		if b.ConsumeString("}") {
+			return n
+		}
+
+		s := p.ParseStatement(b)
+		if s == nil {
+			return nil
+		}
+
+		n.Statements = append(n.Statements, s)
+	}
+
+	p.Error(b, "missing: }")
+	return nil
+}
+
 func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 	n := &NodeCall{}
 
@@ -162,38 +252,33 @@ func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 
 	consumeWhitespace(b)
 
-	if !b.ConsumeString("(") {
-		p.Error(b, "missing: (")
+	if b.ConsumeString("(") {
+		n.Arguments = p.ParseArguments(b)
+		if n.Arguments == nil {
+			return nil
+		}
 	}
 
-	for !b.Empty() {
-		consumeWhitespace(b)
+	consumeWhitespace(b)
 
-		if b.ConsumeString(")") {
-			break
+	if b.ConsumeString("{%") {
+		n.TrailingClosureCompile = p.ParseBlockCompile(b)
+		if n.TrailingClosureCompile == nil {
+			return nil
 		}
-
-		b2 := b.Duplicate()
-		arg := p.ParseArgumentNamed(b2)
-		if arg != nil {
-			n.Arguments = append(n.Arguments, arg)
-			*b = *b2
-			continue
+	} else if b.ConsumeString("{") {
+		n.TrailingClosureRun = p.ParseBlockRun(b)
+		if n.TrailingClosureRun == nil {
+			return nil
 		}
+	}
 
-		b2 = b.Duplicate()
-		arg = p.ParseArgument(b2)
-		if arg != nil {
-			n.Arguments = append(n.Arguments, arg)
-			*b = *b2
-			continue
-		}
-
+	if n.Arguments == nil &&
+		n.TrailingClosureCompile == nil &&
+		n.TrailingClosureRun == nil {
+		p.Error(b, "missing: (, {, {%")
 		return nil
 	}
-
-	// TODO: Optional trailing closure
-	// TODO: Make only one of parentheses or trailing closure required?
 
 	return n
 }
