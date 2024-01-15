@@ -37,10 +37,10 @@ type NodeBlockRun struct {
 }
 
 type NodeCall struct {
-	Reference              *NodeReference
-	Arguments              []*NodeArgument
-	TrailingClosureCompile *NodeBlockCompile
-	TrailingClosureRun     *NodeBlockRun
+	Reference    *NodeReference
+	Arguments    []*NodeArgument
+	BlockCompile *NodeBlockCompile
+	BlockRun     *NodeBlockRun
 }
 
 type NodeExpression struct {
@@ -49,6 +49,8 @@ type NodeExpression struct {
 	StringLiteral *NodeStringLiteral
 	Call          *NodeCall
 	Reference     *NodeReference
+	BlockCompile  *NodeBlockCompile
+	BlockRun      *NodeBlockRun
 }
 
 type NodeIntLiteral struct {
@@ -142,6 +144,13 @@ func (p *Parser) ParseArgumentNamed(b *Buffer) *NodeArgument {
 func (p *Parser) ParseArguments(b *Buffer) []*NodeArgument {
 	args := []*NodeArgument{}
 
+	consumeWhitespace(b)
+
+	if !b.ConsumeString("(") {
+		p.Error(b, "missing: (")
+		return nil
+	}
+
 	for !b.Empty() {
 		consumeWhitespace(b)
 
@@ -197,6 +206,13 @@ func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
 func (p *Parser) ParseBlockCompile(b *Buffer) *NodeBlockCompile {
 	n := &NodeBlockCompile{}
 
+	consumeWhitespace(b)
+
+	if !b.ConsumeString("{%") {
+		p.Error(b, "missing: {%")
+		return nil
+	}
+
 	// TODO: Args, return value
 
 	for !b.Empty() {
@@ -220,6 +236,13 @@ func (p *Parser) ParseBlockCompile(b *Buffer) *NodeBlockCompile {
 
 func (p *Parser) ParseBlockRun(b *Buffer) *NodeBlockRun {
 	n := &NodeBlockRun{}
+
+	consumeWhitespace(b)
+
+	if !b.ConsumeString("{") {
+		p.Error(b, "missing: {")
+		return nil
+	}
 
 	// TODO: Args, return value
 
@@ -250,32 +273,29 @@ func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 		return nil
 	}
 
-	consumeWhitespace(b)
-
-	if b.ConsumeString("(") {
-		n.Arguments = p.ParseArguments(b)
-		if n.Arguments == nil {
-			return nil
-		}
+	b2 := b.Duplicate()
+	n.Arguments = p.ParseArguments(b2)
+	if n.Arguments != nil {
+		*b = *b2
 	}
 
-	consumeWhitespace(b)
+	b2 = b.Duplicate()
+	n.BlockCompile = p.ParseBlockCompile(b2)
+	if n.BlockCompile != nil {
+		*b = *b2
+	}
 
-	if b.ConsumeString("{%") {
-		n.TrailingClosureCompile = p.ParseBlockCompile(b)
-		if n.TrailingClosureCompile == nil {
-			return nil
-		}
-	} else if b.ConsumeString("{") {
-		n.TrailingClosureRun = p.ParseBlockRun(b)
-		if n.TrailingClosureRun == nil {
-			return nil
+	if n.BlockCompile == nil {
+		b2 = b.Duplicate()
+		n.BlockRun = p.ParseBlockRun(b2)
+		if n.BlockRun != nil {
+			*b = *b2
 		}
 	}
 
 	if n.Arguments == nil &&
-		n.TrailingClosureCompile == nil &&
-		n.TrailingClosureRun == nil {
+		n.BlockCompile == nil &&
+		n.BlockRun == nil {
 		p.Error(b, "missing: (, {, {%")
 		return nil
 	}
@@ -310,6 +330,20 @@ func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {
 	b2 = b.Duplicate()
 	n.Reference = p.ParseReference(b2)
 	if n.Reference != nil {
+		*b = *b2
+		return n
+	}
+
+	b2 = b.Duplicate()
+	n.BlockCompile = p.ParseBlockCompile(b2)
+	if n.BlockCompile != nil {
+		*b = *b2
+		return n
+	}
+
+	b2 = b.Duplicate()
+	n.BlockRun = p.ParseBlockRun(b2)
+	if n.BlockRun != nil {
 		*b = *b2
 		return n
 	}

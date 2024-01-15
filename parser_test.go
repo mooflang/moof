@@ -21,6 +21,7 @@ b.foo() {}
 b.foo() {%
 	h = 5
 %}
+i = {}
 `)
 	require.NoError(t, err)
 }
