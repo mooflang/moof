@@ -14,6 +14,8 @@ b = 2
 c = "foo\"bar"
 d = c
 e = b.+
+f = b.+(1)
+g = b.+(foo: 3)
 `)
 	require.NoError(t, err)
 }

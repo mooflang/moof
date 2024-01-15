@@ -9,12 +9,18 @@ const base10Chars = "0123456789"
 
 const whitespaceChars = " \t\n"
 
-const reservedChars = whitespaceChars + "\".(){}%&="
+const reservedChars = whitespaceChars + "\".(){}%&=:"
 const reservedFirstChars = reservedChars + base10Chars
 
 type Parser struct {
-	Err string
-	Pos int
+	Err  string
+	Pos  int
+	Char string
+}
+
+type NodeArgument struct {
+	Name  *NodeSymbolName
+	Value *NodeExpression
 }
 
 type NodeAssignment struct {
@@ -22,10 +28,16 @@ type NodeAssignment struct {
 	Expression *NodeExpression
 }
 
+type NodeCall struct {
+	Reference *NodeReference
+	Arguments []*NodeArgument
+}
+
 type NodeExpression struct {
 	// One of
 	IntLiteral    *NodeIntLiteral
 	StringLiteral *NodeStringLiteral
+	Call          *NodeCall
 	Reference     *NodeReference
 }
 
@@ -67,7 +79,7 @@ func Parse(s string) (*NodeRoot, error) {
 	n := p.ParseRoot(b)
 	if n == nil {
 		line, char := getLineChar(s, p.Pos)
-		return nil, fmt.Errorf("line=%d char=%d: %s", line+1, char+1, p.Err)
+		return nil, fmt.Errorf("line=%d char=%d val=%s: %s", line+1, char+1, p.Char, p.Err)
 	}
 
 	return n, nil
@@ -79,11 +91,41 @@ func (p *Parser) Error(b *Buffer, err string) {
 	}
 	p.Err = err
 	p.Pos = b.Pos()
-
+	p.Char = b.GetString(1)
 }
 
-func (p *Parser) ConsumeWhitespace(b *Buffer) {
-	b.ConsumeManyOf(whitespaceChars)
+func (p *Parser) ParseArgument(b *Buffer) *NodeArgument {
+	n := &NodeArgument{}
+
+	n.Value = p.ParseExpression(b)
+	if n.Value == nil {
+		return nil
+	}
+
+	return n
+}
+
+func (p *Parser) ParseArgumentNamed(b *Buffer) *NodeArgument {
+	n := &NodeArgument{}
+
+	n.Name = p.ParseSymbolName(b)
+	if n.Name == nil {
+		return nil
+	}
+
+	consumeWhitespace(b)
+
+	if !b.ConsumeString(":") {
+		p.Error(b, "missing: :")
+		return nil
+	}
+
+	n.Value = p.ParseExpression(b)
+	if n.Value == nil {
+		return nil
+	}
+
+	return n
 }
 
 func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
@@ -94,7 +136,7 @@ func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
 		return nil
 	}
 
-	p.ConsumeWhitespace(b)
+	consumeWhitespace(b)
 
 	if !b.ConsumeString("=") {
 		p.Error(b, "missing: =")
@@ -105,6 +147,52 @@ func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
 	if n.Expression == nil {
 		return nil
 	}
+
+	return n
+}
+
+func (p *Parser) ParseCall(b *Buffer) *NodeCall {
+	n := &NodeCall{}
+
+	n.Reference = p.ParseReference(b)
+	if n.Reference == nil {
+		return nil
+	}
+
+	consumeWhitespace(b)
+
+	if !b.ConsumeString("(") {
+		p.Error(b, "missing: (")
+	}
+
+	for !b.Empty() {
+		consumeWhitespace(b)
+
+		if b.ConsumeString(")") {
+			break
+		}
+
+		b2 := b
+		arg := p.ParseArgumentNamed(b2)
+		if arg != nil {
+			n.Arguments = append(n.Arguments, arg)
+			*b = *b2
+			continue
+		}
+
+		b2 = b
+		arg = p.ParseArgument(b2)
+		if arg != nil {
+			n.Arguments = append(n.Arguments, arg)
+			*b = *b2
+			continue
+		}
+
+		return nil
+	}
+
+	// TODO: Optional trailing closure
+	// TODO: Make only one of parentheses or trailing closure required?
 
 	return n
 }
@@ -127,6 +215,13 @@ func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {
 	}
 
 	b2 = b.Duplicate()
+	n.Call = p.ParseCall(b2)
+	if n.Call != nil {
+		*b = *b2
+		return n
+	}
+
+	b2 = b.Duplicate()
 	n.Reference = p.ParseReference(b2)
 	if n.Reference != nil {
 		*b = *b2
@@ -139,7 +234,7 @@ func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {
 func (p *Parser) ParseIntLiteral(b *Buffer) *NodeIntLiteral {
 	n := &NodeIntLiteral{}
 
-	p.ConsumeWhitespace(b)
+	consumeWhitespace(b)
 
 	s := b.ConsumeManyOf(base10Chars)
 	if s == "" {
@@ -166,7 +261,7 @@ func (p *Parser) ParseReference(b *Buffer) *NodeReference {
 	n.SymbolNames = append(n.SymbolNames, sym)
 
 	for !b.Empty() {
-		p.ConsumeWhitespace(b)
+		consumeWhitespace(b)
 
 		if !b.ConsumeString(".") {
 			break
@@ -179,7 +274,7 @@ func (p *Parser) ParseReference(b *Buffer) *NodeReference {
 
 		n.SymbolNames = append(n.SymbolNames, sym)
 
-		p.ConsumeWhitespace(b)
+		consumeWhitespace(b)
 	}
 
 	return n
@@ -196,7 +291,7 @@ func (p *Parser) ParseRoot(b *Buffer) *NodeRoot {
 
 		n.Statements = append(n.Statements, s)
 
-		p.ConsumeWhitespace(b)
+		consumeWhitespace(b)
 	}
 
 	return n
@@ -231,10 +326,10 @@ func (p *Parser) ParseStatement(b *Buffer) *NodeStatement {
 func (p *Parser) ParseStringLiteral(b *Buffer) *NodeStringLiteral {
 	n := &NodeStringLiteral{}
 
-	p.ConsumeWhitespace(b)
+	consumeWhitespace(b)
 
 	if !b.ConsumeString("\"") {
-		p.Error(b, "missing string literal opening quote")
+		p.Error(b, "missing: string literal opening \"")
 		return nil
 	}
 
@@ -255,14 +350,14 @@ func (p *Parser) ParseStringLiteral(b *Buffer) *NodeStringLiteral {
 		}
 	}
 
-	p.Error(b, "missing string literal closing quote")
+	p.Error(b, "missing: string literal closing \"")
 	return nil
 }
 
 func (p *Parser) ParseSymbolName(b *Buffer) *NodeSymbolName {
 	n := &NodeSymbolName{}
 
-	p.ConsumeWhitespace(b)
+	consumeWhitespace(b)
 
 	n.Value = b.ConsumeOneNotOf(reservedFirstChars)
 	if n.Value == "" {
@@ -273,6 +368,10 @@ func (p *Parser) ParseSymbolName(b *Buffer) *NodeSymbolName {
 	n.Value += b.ConsumeManyNotOf(reservedChars)
 
 	return n
+}
+
+func consumeWhitespace(b *Buffer) {
+	b.ConsumeManyOf(whitespaceChars)
 }
 
 func getLineChar(s string, p int) (int, int) {
