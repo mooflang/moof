@@ -9,9 +9,10 @@ import (
 
 func TestParse(t *testing.T) {
 	_, err := moof.Parse(`
-x = 1
-y = 2
-z = "foo\"bar"
+a = 1
+b = 2
+c = "foo\"bar"
+d = c
 `)
 	require.NoError(t, err)
 }

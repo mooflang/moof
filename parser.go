@@ -23,8 +23,9 @@ type NodeAssignment struct {
 
 type NodeExpression struct {
 	// One of
-	IntLiteral *NodeIntLiteral
+	IntLiteral    *NodeIntLiteral
 	StringLiteral *NodeStringLiteral
+	SymbolName    *NodeSymbolName
 }
 
 type NodeIntLiteral struct {
@@ -114,6 +115,13 @@ func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {
 	b2 = b.Duplicate()
 	n.StringLiteral = p.ParseStringLiteral(b2)
 	if n.StringLiteral != nil {
+		*b = *b2
+		return n
+	}
+
+	b2 = b.Duplicate()
+	n.SymbolName = p.ParseSymbolName(b2)
+	if n.SymbolName != nil {
 		*b = *b2
 		return n
 	}
