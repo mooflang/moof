@@ -61,6 +61,7 @@ type NodeRoot struct {
 type NodeStatement struct {
 	// One of
 	Assignment *NodeAssignment
+	Call       *NodeCall
 }
 
 type NodeStringLiteral struct {
@@ -172,7 +173,7 @@ func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 			break
 		}
 
-		b2 := b
+		b2 := b.Duplicate()
 		arg := p.ParseArgumentNamed(b2)
 		if arg != nil {
 			n.Arguments = append(n.Arguments, arg)
@@ -180,7 +181,7 @@ func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 			continue
 		}
 
-		b2 = b
+		b2 = b.Duplicate()
 		arg = p.ParseArgument(b2)
 		if arg != nil {
 			n.Arguments = append(n.Arguments, arg)
@@ -316,6 +317,13 @@ func (p *Parser) ParseStatement(b *Buffer) *NodeStatement {
 	b2 := b.Duplicate()
 	n.Assignment = p.ParseAssignment(b2)
 	if n.Assignment != nil {
+		*b = *b2
+		return n
+	}
+
+	b2 = b.Duplicate()
+	n.Call = p.ParseCall(b2)
+	if n.Call != nil {
 		*b = *b2
 		return n
 	}
