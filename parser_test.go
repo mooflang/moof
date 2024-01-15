@@ -13,6 +13,7 @@ a = 1
 b = 2
 c = "foo\"bar"
 d = c
+e = b.+
 `)
 	require.NoError(t, err)
 }

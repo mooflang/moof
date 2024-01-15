@@ -2,6 +2,7 @@ package moof
 
 import (
 	"fmt"
+	"log"
 )
 
 const base10Chars = "0123456789"
@@ -25,7 +26,7 @@ type NodeExpression struct {
 	// One of
 	IntLiteral    *NodeIntLiteral
 	StringLiteral *NodeStringLiteral
-	SymbolName    *NodeSymbolName
+	Reference     *NodeReference
 }
 
 type NodeIntLiteral struct {
@@ -35,6 +36,10 @@ type NodeIntLiteral struct {
 type NodeLHS struct {
 	// One of
 	SymbolName *NodeSymbolName
+}
+
+type NodeReference struct {
+	SymbolNames []*NodeSymbolName
 }
 
 type NodeRoot struct {
@@ -55,12 +60,14 @@ type NodeSymbolName struct {
 }
 
 func Parse(s string) (*NodeRoot, error) {
+	log.Printf("Parse()")
 	p := &Parser{}
 	b := NewBuffer(s)
 
 	n := p.ParseRoot(b)
 	if n == nil {
-		return nil, fmt.Errorf("pos=%d: %s", p.Pos, p.Err)
+		line, char := getLineChar(s, p.Pos)
+		return nil, fmt.Errorf("line=%d char=%d: %s", line+1, char+1, p.Err)
 	}
 
 	return n, nil
@@ -120,8 +127,8 @@ func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {
 	}
 
 	b2 = b.Duplicate()
-	n.SymbolName = p.ParseSymbolName(b2)
-	if n.SymbolName != nil {
+	n.Reference = p.ParseReference(b2)
+	if n.Reference != nil {
 		*b = *b2
 		return n
 	}
@@ -148,10 +155,40 @@ func (p *Parser) ParseIntLiteral(b *Buffer) *NodeIntLiteral {
 	return n
 }
 
+func (p *Parser) ParseReference(b *Buffer) *NodeReference {
+	n := &NodeReference{}
+
+	sym := p.ParseSymbolName(b)
+	if sym == nil {
+		return nil
+	}
+
+	n.SymbolNames = append(n.SymbolNames, sym)
+
+	for !b.Empty() {
+		p.ConsumeWhitespace(b)
+
+		if !b.ConsumeString(".") {
+			break
+		}
+
+		sym := p.ParseSymbolName(b)
+		if sym == nil {
+			return nil
+		}
+
+		n.SymbolNames = append(n.SymbolNames, sym)
+
+		p.ConsumeWhitespace(b)
+	}
+
+	return n
+}
+
 func (p *Parser) ParseRoot(b *Buffer) *NodeRoot {
 	n := &NodeRoot{}
 
-	for b.Len() > 0 {
+	for !b.Empty() {
 		s := p.ParseStatement(b)
 		if s == nil {
 			return nil
@@ -203,7 +240,7 @@ func (p *Parser) ParseStringLiteral(b *Buffer) *NodeStringLiteral {
 
 	quote := false
 
-	for b.Len() > 0 {
+	for !b.Empty() {
 		c := b.ConsumeOne()
 
 		if quote {
@@ -236,4 +273,24 @@ func (p *Parser) ParseSymbolName(b *Buffer) *NodeSymbolName {
 	n.Value += b.ConsumeManyNotOf(reservedChars)
 
 	return n
+}
+
+func getLineChar(s string, p int) (int, int) {
+	line := 0
+	char := 0
+
+	for i, c := range s {
+		if i == p {
+			break
+		}
+
+		if c == '\n' {
+			line += 1
+			char = 0
+		} else {
+			char += 1
+		}
+	}
+
+	return line, char
 }

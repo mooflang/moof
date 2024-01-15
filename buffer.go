@@ -22,6 +22,10 @@ func (b Buffer) Duplicate() *Buffer {
 	}
 }
 
+func (b Buffer) Empty() bool {
+	return b.Len() == 0
+}
+
 func (b Buffer) GetAll() string {
 	return string(b.s[b.i:])
 }
