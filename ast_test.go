@@ -11,6 +11,7 @@ func TestParse(t *testing.T) {
 	_, err := moof.Parse(`
 x = 1
 y = 2
+z = "foo\"bar"
 `)
 	require.NoError(t, err)
 }

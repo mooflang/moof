@@ -24,6 +24,7 @@ type NodeAssignment struct {
 type NodeExpression struct {
 	// One of
 	IntLiteral *NodeIntLiteral
+	StringLiteral *NodeStringLiteral
 }
 
 type NodeIntLiteral struct {
@@ -42,6 +43,10 @@ type NodeRoot struct {
 type NodeStatement struct {
 	// One of
 	Assignment *NodeAssignment
+}
+
+type NodeStringLiteral struct {
+	Value string
 }
 
 type NodeSymbolName struct {
@@ -102,6 +107,13 @@ func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {
 	b2 := b.Duplicate()
 	n.IntLiteral = p.ParseIntLiteral(b2)
 	if n.IntLiteral != nil {
+		*b = *b2
+		return n
+	}
+
+	b2 = b.Duplicate()
+	n.StringLiteral = p.ParseStringLiteral(b2)
+	if n.StringLiteral != nil {
 		*b = *b2
 		return n
 	}
@@ -168,6 +180,37 @@ func (p *Parser) ParseStatement(b *Buffer) *NodeStatement {
 		return n
 	}
 
+	return nil
+}
+
+func (p *Parser) ParseStringLiteral(b *Buffer) *NodeStringLiteral {
+	n := &NodeStringLiteral{}
+
+	p.ConsumeWhitespace(b)
+
+	if !b.ConsumeString("\"") {
+		p.Error(b, "missing string literal opening quote")
+		return nil
+	}
+
+	quote := false
+
+	for b.Len() > 0 {
+		c := b.ConsumeOne()
+
+		if quote {
+			quote = false
+			n.Value += c
+		} else if c == "\"" {
+			return n
+		} else if c == "\\" {
+			quote = true
+		} else {
+			n.Value += c
+		}
+	}
+
+	p.Error(b, "missing string literal closing quote")
 	return nil
 }
 

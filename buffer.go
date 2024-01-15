@@ -67,6 +67,15 @@ func (b *Buffer) ConsumeString(s string) bool {
 	return true
 }
 
+func (b *Buffer) ConsumeOne() string {
+	if b.Len() < 1 {
+		return ""
+	}
+	r := b.GetRune()
+	b.Consume(1)
+	return string(r)
+}
+
 func (b *Buffer) ConsumeOneOf(chars string) string {
 	if b.Len() < 1 {
 		return ""
