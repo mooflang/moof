@@ -9,7 +9,7 @@ const base10Chars = "0123456789"
 
 const whitespaceChars = " \t\n"
 
-const reservedChars = whitespaceChars + "\".(){}%&=:"
+const reservedChars = whitespaceChars + "\".,(){}%&=:"
 const reservedFirstChars = reservedChars + base10Chars
 
 type Parser struct {
@@ -18,21 +18,23 @@ type Parser struct {
 	Char string
 }
 
-type NodeCallArgument struct {
-	Name  *NodeSymbolName
-	Value *NodeExpression
-}
-
 type NodeAssignment struct {
 	LHS        *NodeLHS
 	Expression *NodeExpression
 }
 
+type NodeBlockArgument struct {
+	Name *NodeSymbolName
+	Type *NodeReference
+}
+
 type NodeBlockCompile struct {
+	BlockArguments []*NodeBlockArgument
 	Statements []*NodeStatement
 }
 
 type NodeBlockRun struct {
+	BlockArguments []*NodeBlockArgument
 	Statements []*NodeStatement
 }
 
@@ -41,6 +43,11 @@ type NodeCall struct {
 	CallArguments []*NodeCallArgument
 	BlockCompile  *NodeBlockCompile
 	BlockRun      *NodeBlockRun
+}
+
+type NodeCallArgument struct {
+	Name  *NodeSymbolName
+	Value *NodeExpression
 }
 
 type NodeExpression struct {
@@ -105,79 +112,6 @@ func (p *Parser) Error(b *Buffer, err string) {
 	p.Err = err
 	p.Pos = b.Pos()
 	p.Char = b.GetString(1)
-}
-
-func (p *Parser) ParseCallArgument(b *Buffer) *NodeCallArgument {
-	n := &NodeCallArgument{}
-
-	n.Value = p.ParseExpression(b)
-	if n.Value == nil {
-		return nil
-	}
-
-	return n
-}
-
-func (p *Parser) ParseCallArgumentNamed(b *Buffer) *NodeCallArgument {
-	n := &NodeCallArgument{}
-
-	n.Name = p.ParseSymbolName(b)
-	if n.Name == nil {
-		return nil
-	}
-
-	consumeWhitespace(b)
-
-	if !b.ConsumeString(":") {
-		p.Error(b, "missing: :")
-		return nil
-	}
-
-	n.Value = p.ParseExpression(b)
-	if n.Value == nil {
-		return nil
-	}
-
-	return n
-}
-
-func (p *Parser) ParseCallArguments(b *Buffer) []*NodeCallArgument {
-	args := []*NodeCallArgument{}
-
-	consumeWhitespace(b)
-
-	if !b.ConsumeString("(") {
-		p.Error(b, "missing: (")
-		return nil
-	}
-
-	for !b.Empty() {
-		consumeWhitespace(b)
-
-		if b.ConsumeString(")") {
-			return args
-		}
-
-		b2 := b.Duplicate()
-		arg := p.ParseCallArgumentNamed(b2)
-		if arg != nil {
-			args = append(args, arg)
-			*b = *b2
-			continue
-		}
-
-		b2 = b.Duplicate()
-		arg = p.ParseCallArgument(b2)
-		if arg != nil {
-			args = append(args, arg)
-			*b = *b2
-			continue
-		}
-
-		return nil
-	}
-
-	return nil
 }
 
 func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
@@ -301,6 +235,84 @@ func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 	}
 
 	return n
+}
+
+func (p *Parser) ParseCallArgument(b *Buffer) *NodeCallArgument {
+	n := &NodeCallArgument{}
+
+	n.Value = p.ParseExpression(b)
+	if n.Value == nil {
+		return nil
+	}
+
+	return n
+}
+
+func (p *Parser) ParseCallArgumentNamed(b *Buffer) *NodeCallArgument {
+	n := &NodeCallArgument{}
+
+	n.Name = p.ParseSymbolName(b)
+	if n.Name == nil {
+		return nil
+	}
+
+	consumeWhitespace(b)
+
+	if !b.ConsumeString(":") {
+		p.Error(b, "missing: :")
+		return nil
+	}
+
+	n.Value = p.ParseExpression(b)
+	if n.Value == nil {
+		return nil
+	}
+
+	return n
+}
+
+func (p *Parser) ParseCallArguments(b *Buffer) []*NodeCallArgument {
+	args := []*NodeCallArgument{}
+
+	consumeWhitespace(b)
+
+	if !b.ConsumeString("(") {
+		p.Error(b, "missing: (")
+		return nil
+	}
+
+	for !b.Empty() {
+		consumeWhitespace(b)
+
+		if b.ConsumeString(")") {
+			return args
+		}
+
+		if len(args) > 0 && !b.ConsumeString(",") {
+			p.Error(b, "missing: ,")
+			return nil
+		}
+
+		b2 := b.Duplicate()
+		arg := p.ParseCallArgumentNamed(b2)
+		if arg != nil {
+			args = append(args, arg)
+			*b = *b2
+			continue
+		}
+
+		b2 = b.Duplicate()
+		arg = p.ParseCallArgument(b2)
+		if arg != nil {
+			args = append(args, arg)
+			*b = *b2
+			continue
+		}
+
+		return nil
+	}
+
+	return nil
 }
 
 func (p *Parser) ParseExpression(b *Buffer) *NodeExpression {

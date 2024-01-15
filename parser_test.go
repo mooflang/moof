@@ -22,6 +22,7 @@ b.foo() {%
 	h = 5
 %}
 i = {}
+b.bar(3, "foo")
 `)
 	require.NoError(t, err)
 }
