@@ -30,12 +30,12 @@ type NodeBlockArgument struct {
 
 type NodeBlockCompile struct {
 	BlockArguments []*NodeBlockArgument
-	Statements []*NodeStatement
+	Statements     []*NodeStatement
 }
 
 type NodeBlockRun struct {
 	BlockArguments []*NodeBlockArgument
-	Statements []*NodeStatement
+	Statements     []*NodeStatement
 }
 
 type NodeCall struct {
@@ -137,6 +137,62 @@ func (p *Parser) ParseAssignment(b *Buffer) *NodeAssignment {
 	return n
 }
 
+func (p *Parser) ParseBlockArgument(b *Buffer) *NodeBlockArgument {
+	n := &NodeBlockArgument{}
+
+	n.Name = p.ParseSymbolName(b)
+	if n.Name == nil {
+		return nil
+	}
+
+	consumeWhitespace(b)
+
+	if !b.ConsumeString(":") {
+		return n
+	}
+
+	n.Type = p.ParseReference(b)
+	if n.Type == nil {
+		return nil
+	}
+
+	return n
+}
+
+func (p *Parser) ParseBlockArguments(b *Buffer) []*NodeBlockArgument {
+	args := []*NodeBlockArgument{}
+
+	consumeWhitespace(b)
+
+	if !b.ConsumeString("(") {
+		p.Error(b, "missing: (")
+		return nil
+	}
+
+	for !b.Empty() {
+		consumeWhitespace(b)
+
+		if b.ConsumeString(")") {
+			return args
+		}
+
+		if len(args) > 0 && !b.ConsumeString(",") {
+			p.Error(b, "missing: ,")
+			return nil
+		}
+
+		arg := p.ParseBlockArgument(b)
+		if arg == nil {
+			return nil
+		}
+
+		args = append(args, arg)
+	}
+
+	p.Error(b, "missing: )")
+	return nil
+}
+
 func (p *Parser) ParseBlockCompile(b *Buffer) *NodeBlockCompile {
 	n := &NodeBlockCompile{}
 
@@ -147,7 +203,9 @@ func (p *Parser) ParseBlockCompile(b *Buffer) *NodeBlockCompile {
 		return nil
 	}
 
-	// TODO: Args, return value
+	n.BlockArguments = p.ParseBlockArguments(b)
+
+	// TODO: return value
 
 	for !b.Empty() {
 		consumeWhitespace(b)
@@ -178,7 +236,9 @@ func (p *Parser) ParseBlockRun(b *Buffer) *NodeBlockRun {
 		return nil
 	}
 
-	// TODO: Args, return value
+	n.BlockArguments = p.ParseBlockArguments(b)
+
+	// TODO: Return value
 
 	for !b.Empty() {
 		consumeWhitespace(b)
@@ -312,6 +372,7 @@ func (p *Parser) ParseCallArguments(b *Buffer) []*NodeCallArgument {
 		return nil
 	}
 
+	p.Error(b, "missing: )")
 	return nil
 }
 

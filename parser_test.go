@@ -23,6 +23,15 @@ b.foo() {%
 %}
 i = {}
 b.bar(3, "foo")
+
+Foo = $Class {%
+	bar = $Int
+	zig = 5
+	foo = { (a: $Int, b: $String)
+		bar.set(a)
+		c.return(b)
+	}
+%}
 `)
 	require.NoError(t, err)
 }
