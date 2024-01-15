@@ -3,6 +3,7 @@ package moof
 import (
 	"fmt"
 	"log"
+	"strings"
 )
 
 const base10Chars = "0123456789"
@@ -29,20 +30,22 @@ type NodeBlockArgument struct {
 }
 
 type NodeBlockCompile struct {
-	BlockArguments []*NodeBlockArgument
-	Statements     []*NodeStatement
+	Arguments  []*NodeBlockArgument
+	Return     []*NodeBlockArgument
+	Statements []*NodeStatement
 }
 
 type NodeBlockRun struct {
-	BlockArguments []*NodeBlockArgument
-	Statements     []*NodeStatement
+	Arguments  []*NodeBlockArgument
+	Return     []*NodeBlockArgument
+	Statements []*NodeStatement
 }
 
 type NodeCall struct {
-	Reference     *NodeReference
-	CallArguments []*NodeCallArgument
-	BlockCompile  *NodeBlockCompile
-	BlockRun      *NodeBlockRun
+	Reference    *NodeReference
+	Arguments    []*NodeCallArgument
+	BlockCompile *NodeBlockCompile
+	BlockRun     *NodeBlockRun
 }
 
 type NodeCallArgument struct {
@@ -203,9 +206,8 @@ func (p *Parser) ParseBlockCompile(b *Buffer) *NodeBlockCompile {
 		return nil
 	}
 
-	n.BlockArguments = p.ParseBlockArguments(b)
-
-	// TODO: return value
+	n.Arguments = p.ParseBlockArguments(b)
+	n.Return = p.ParseBlockReturn(b)
 
 	for !b.Empty() {
 		consumeWhitespace(b)
@@ -226,6 +228,31 @@ func (p *Parser) ParseBlockCompile(b *Buffer) *NodeBlockCompile {
 	return nil
 }
 
+func (p *Parser) ParseBlockReturn(b *Buffer) []*NodeBlockArgument {
+	consumeWhitespace(b)
+
+	if !b.ConsumeString("->") {
+		p.Error(b, "missing: ->")
+		return nil
+	}
+
+	b2 := b.Duplicate()
+	args := p.ParseBlockArguments(b2)
+	if args != nil {
+		*b = *b2
+		return args
+	}
+
+	b2 = b.Duplicate()
+	arg := p.ParseBlockArgument(b2)
+	if arg != nil {
+		*b = *b2
+		return []*NodeBlockArgument{arg}
+	}
+
+	return nil
+}
+
 func (p *Parser) ParseBlockRun(b *Buffer) *NodeBlockRun {
 	n := &NodeBlockRun{}
 
@@ -236,9 +263,8 @@ func (p *Parser) ParseBlockRun(b *Buffer) *NodeBlockRun {
 		return nil
 	}
 
-	n.BlockArguments = p.ParseBlockArguments(b)
-
-	// TODO: Return value
+	n.Arguments = p.ParseBlockArguments(b)
+	n.Return = p.ParseBlockReturn(b)
 
 	for !b.Empty() {
 		consumeWhitespace(b)
@@ -268,8 +294,8 @@ func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 	}
 
 	b2 := b.Duplicate()
-	n.CallArguments = p.ParseCallArguments(b2)
-	if n.CallArguments != nil {
+	n.Arguments = p.ParseCallArguments(b2)
+	if n.Arguments != nil {
 		*b = *b2
 	}
 
@@ -287,7 +313,7 @@ func (p *Parser) ParseCall(b *Buffer) *NodeCall {
 		}
 	}
 
-	if n.CallArguments == nil &&
+	if n.Arguments == nil &&
 		n.BlockCompile == nil &&
 		n.BlockRun == nil {
 		p.Error(b, "missing: (, {, {%")
@@ -568,6 +594,26 @@ func (p *Parser) ParseSymbolName(b *Buffer) *NodeSymbolName {
 	n.Value += b.ConsumeManyNotOf(reservedChars)
 
 	return n
+}
+
+func (n NodeRoot) Tree(prefix string) string {
+	ret := []string{}
+	for _, s := range n.Statements {
+		ret = append(ret, fmt.Sprintf("%s%s", prefix, s.Tree(prefix+"\t")))
+	}
+	return strings.Join(ret, "")
+}
+
+func (n NodeStatement) Tree(prefix string) string {
+	switch {
+	case n.Assignment != nil:
+		// return fmt.Sprintf("%s[statement] %s\n", prefix, n.Assignment.Tree(prefix + "\t"))
+		return fmt.Sprintf("%s[statement]\n", prefix)
+	case n.Call != nil:
+		// return fmt.Sprintf("%s[statement] %s\n", prefix, n.Call.Tree(prefix + "\t"))
+		return fmt.Sprintf("%s[statement]\n", prefix)
+	}
+	return fmt.Sprintf("%s[statement] INVALID\n", prefix)
 }
 
 func consumeWhitespace(b *Buffer) {

@@ -8,7 +8,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	_, err := moof.Parse(`
+	tree, err := moof.Parse(`
 a = 1
 b = 2
 c = "foo\"bar"
@@ -27,13 +27,15 @@ b.bar(3, "foo")
 Foo = $Class {%
 	bar = $Int
 	zig = 5
-	foo = { (a: $Int, b: $String)
+	foo = { (a: $Int, b: $String, c) -> d: $String
 		bar.set(a)
 		c.return(b)
 	}
 %}
 `)
 	require.NoError(t, err)
+
+	t.Logf("\n%s", tree.Tree(""))
 }
 
 func TestBuffer(t *testing.T) {
