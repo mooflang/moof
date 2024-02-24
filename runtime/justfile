@@ -22,6 +22,10 @@ link output +objs:
 	echo $cmd
 	$cmd
 
+test:
+	@just build
+	bin/alloc_test
+
 clean:
 	rm -f bin/* obj/*
 
