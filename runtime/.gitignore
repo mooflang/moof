@@ -1,2 +1,2 @@
-alloc_test
-*.o
+bin/
+obj/

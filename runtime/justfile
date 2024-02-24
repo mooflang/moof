@@ -4,19 +4,31 @@ default:
 	@just time
 
 build:
-	llc-17 -O=3 -filetype=obj -o abort.o abort.ll
-	llc-17 -O=3 -filetype=obj -o alloc.o alloc.ll
-	llc-17 -O=3 -filetype=obj -o alloc_test.o alloc_test.ll
-	llc-17 -O=3 -filetype=obj -o sys.o sys.ll
-	llc-17 -O=3 -filetype=obj -o thread.o thread.ll
+	@just compile generic/abort.ll
+	@just compile generic/alloc.ll
+	@just compile linux-x86_64/sys.ll
+	@just compile linux-x86_64/thread.ll
+	@just compile test/alloc_test.ll
 
-	ld -o alloc_test abort.o alloc.o sys.o thread.o alloc_test.o
-	rm *.o
+	@just link alloc_test abort alloc sys thread alloc_test
+
+compile path:
+	llc-17 -O=3 -filetype=obj -o obj/{{file_stem(path)}}.o {{path}}
+
+link output +objs:
+	#!/bin/bash -e
+	obj_paths=`for obj in {{objs}}; do echo obj/$obj.o; done`
+	cmd="ld.lld-17 -o bin/{{output}} $obj_paths"
+	echo $cmd
+	$cmd
+
+clean:
+	rm -f bin/* obj/*
 
 strace:
 	@just build
-	strace -x ./alloc_test >/dev/null
+	strace -x bin/alloc_test >/dev/null
 
 time:
 	@just build
-	time ./alloc_test
+	time bin/alloc_test
