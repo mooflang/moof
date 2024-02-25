@@ -20,3 +20,28 @@ nonzero:
 	call void @abort()
 	unreachable
 }
+
+define void @abort_if_not_equal(i64 %val1, i64 %val2) alwaysinline {
+	%is_equal = icmp eq i64 %val1, %val2
+	br i1 %is_equal, label %equal, label %notequal
+
+equal:
+	ret void
+
+notequal:
+	call void @abort()
+	unreachable
+}
+
+
+define void @abort_if_null(ptr %val) alwaysinline {
+	%is_null = icmp eq ptr %val, null
+	br i1 %is_null, label %null, label %notnull
+
+null:
+	call void @abort()
+	unreachable
+
+notnull:
+	ret void
+}

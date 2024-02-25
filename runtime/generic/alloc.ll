@@ -7,13 +7,10 @@ declare i64 @llvm.cttz(i64, i1)
 declare i64 @llvm.umax(i64, i64)
 
 declare void @abort_if_nonzero(i64)
+declare void @abort_if_null(ptr)
 
-declare i64 @sys_arch_prctl(i64, ptr)
-declare i64 @sys_getpid()
-declare i64 @sys_kill(i64, i64)
 declare i64 @sys_mmap2(ptr, i64, i64, i64, i64, i64)
 declare i64 @sys_munmap(ptr, i64)
-declare i64 @sys_write(i64, ptr, i64)
 
 @alloc_heads = private thread_local(localexec) global [16 x ptr] zeroinitializer
 
@@ -58,8 +55,9 @@ pool:
 ; Acquire directly with mmap() (not from a pool)
 define ptr @alloc_acquire_direct(i64 %bytes) alwaysinline {
 	; PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS
-	%p = call ptr @sys_mmap2(ptr null, i64 %bytes, i64 u0x03, i64 u0x22, i64 -1, i64 0)
-	ret ptr %p
+	%ptr = call ptr @sys_mmap2(ptr null, i64 %bytes, i64 u0x03, i64 u0x22, i64 -1, i64 0)
+	call void @abort_if_null(ptr %ptr)
+	ret ptr %ptr
 }
 
 ; Acquire from a bulk pool
@@ -139,6 +137,7 @@ entry:
 	%pool_bytes = load i64, ptr @alloc_pool_bytes
 	; PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS
 	%alloc_ptr = call ptr @sys_mmap2(ptr null, i64 %pool_bytes, i64 u0x03, i64 u0x22, i64 -1, i64 0)
+	call void @abort_if_null(ptr %alloc_ptr)
 
 	br label %loop
 
