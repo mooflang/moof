@@ -43,7 +43,7 @@ define private void @test_alloc_block_bytes() alwaysinline {
 	call void @abort_if_not_equal(i64 %bytes1, i64 16)
 
 	%bytes2 = call i64 @alloc_block_bytes(i64 2)
-	call void @abort_if_not_equal(i64 %bytes1, i64 8)
+	call void @abort_if_not_equal(i64 %bytes2, i64 8)
 
 	ret void
 }
