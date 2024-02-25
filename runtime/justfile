@@ -1,38 +1,32 @@
 set shell := [ "bash", "-c" ]
 
 default:
-	@just time
+	@just test
 
-build:
-	@just compile generic/abort.ll
-	@just compile generic/alloc.ll
-	@just compile linux-x86_64/sys.ll
-	@just compile linux-x86_64/thread.ll
-	@just compile test/alloc_test.ll
+build-test:
+	@just build alloc_test \
+		generic/abort.ll \
+		generic/alloc.ll \
+		linux-x86_64/sys.ll \
+		linux-x86_64/thread.ll \
+		test/alloc_test.ll
 
-	@just link alloc_test abort alloc sys thread alloc_test
-
-compile path:
-	llc-17 -O=3 -filetype=obj -o obj/{{file_stem(path)}}.o {{path}}
-
-link output +objs:
-	#!/bin/bash -e
-	obj_paths=`for obj in {{objs}}; do echo obj/$obj.o; done`
-	cmd="ld.lld-17 -o bin/{{output}} $obj_paths"
-	echo $cmd
-	$cmd
+build output +sources:
+	llvm-link-17 -S -o tmp/{{file_stem(output)}}.ll {{sources}}
+	llc-17 -O=3 -filetype=obj -o tmp/{{file_stem(output)}}.o tmp/{{file_stem(output)}}.ll
+	ld.lld-17 -o bin/{{output}} tmp/{{file_stem(output)}}.o
 
 test:
-	@just build
+	@just build-test
 	bin/alloc_test
 
 clean:
-	rm -f bin/* obj/*
+	rm -f bin/* tmp/*
 
 strace:
-	@just build
+	@just build-test
 	strace -x bin/alloc_test >/dev/null
 
 time:
-	@just build
+	@just build-test
 	time bin/alloc_test
