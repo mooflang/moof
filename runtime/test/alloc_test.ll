@@ -39,11 +39,11 @@ define private void @test_alloc_slot() alwaysinline {
 }
 
 ; Array size must match @testlib_alloc_size and should not be a multiple of 3
-@test_alloc_sizes = global [7 x i64] [i64 14, i64 2, i64 64, i64 63, i64 129, i64 262144, i64 262145]
+@test_alloc_sizes = global [8 x i64] [i64 14, i64 2, i64 64, i64 63, i64 129, i64 262144, i64 262145, i64 100000]
 
 define private i64 @testlib_alloc_size(i64 %counter, i64 %offset) alwaysinline {
 	%with_offset = add i64 %counter, %offset
-	%index = urem i64 %with_offset, 7
+	%index = urem i64 %with_offset, 8
 	%ptr = getelementptr i64, ptr @test_alloc_sizes, i64 %index
 	%val = load i64, ptr %ptr
 	ret i64 %val
@@ -105,7 +105,7 @@ define private ptr @testlib_end(ptr %start, i64 %bytes) alwaysinline {
 
 define private void @test_alloc_acquire() alwaysinline {
 entry:
-	%to_check = alloca %check, i64 400
+	%to_check = alloca %check, i64 4000
 	%to_check_i = alloca i64
 	store i64 0, ptr %to_check_i
 
@@ -132,7 +132,7 @@ loop:
 	call void @alloc_release(ptr %ptr2, i64 %s2)
 
 	%next_counter = add i64 %counter, 1
-	%continue = icmp ult i64 %next_counter, 100
+	%continue = icmp ult i64 %next_counter, 1000
 	br i1 %continue, label %loop, label %afterloop
 
 afterloop:
