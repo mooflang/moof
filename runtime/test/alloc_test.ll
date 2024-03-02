@@ -38,7 +38,7 @@ define private void @test_alloc_slot() alwaysinline {
 }
 
 ; Array size must match @testlib_alloc_size urem value
-@test_alloc_sizes = global [8 x i64] [i64 14, i64 2, i64 64, i64 63, i64 129, i64 262144, i64 262145, i64 100000]
+@test_alloc_sizes = private global [8 x i64] [i64 14, i64 2, i64 64, i64 63, i64 129, i64 262144, i64 262145, i64 100000]
 
 define private i64 @testlib_alloc_size(i64 %counter, i64 %offset) alwaysinline {
 	%with_offset = add i64 %counter, %offset
