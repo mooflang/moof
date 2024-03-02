@@ -6,7 +6,6 @@ declare i64 @alloc_block_bytes(i64)
 declare ptr @alloc_release(ptr, i64)
 declare i64 @alloc_slot(i64)
 declare void @sys_exit_group(i64)
-declare i64 @sys_write(i64, ptr, i64)
 declare void @thread_tls_init()
 declare i64 @llvm.umax(i64, i64)
 
