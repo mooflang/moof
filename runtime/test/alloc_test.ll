@@ -6,7 +6,9 @@ declare i64 @alloc_block_bytes(i64)
 declare ptr @alloc_release(ptr, i64)
 declare i64 @alloc_slot(i64)
 declare void @sys_exit_group(i64)
+declare i64 @sys_write(i64, ptr, i64)
 declare void @thread_tls_init()
+declare i64 @llvm.umax(i64, i64)
 
 define void @_start() {
 	call void @thread_tls_init()
@@ -91,9 +93,19 @@ afterloop:
 	ret void
 }
 
+define private ptr @testlib_end(ptr %start, i64 %bytes) alwaysinline {
+	%bytes2 = call i64 @llvm.umax(i64 %bytes, i64 8)
+	%1 = ptrtoint ptr %start to i64
+	%2 = add i64 %1, %bytes2
+	%3 = sub i64 %2, 8
+	%4 = and i64 %3, u0xfffffffffffffff8
+	%5 = inttoptr i64 %4 to ptr
+	ret ptr %5
+}
+
 define private void @test_alloc_acquire() alwaysinline {
 entry:
-	%to_check = alloca %check, i64 300
+	%to_check = alloca %check, i64 400
 	%to_check_i = alloca i64
 	store i64 0, ptr %to_check_i
 
@@ -104,14 +116,18 @@ loop:
 
 	%s1 = call i64 @testlib_alloc_size(i64 %counter, i64 0)
 	%ptr1 = call ptr @alloc_acquire(i64 %s1)
-	call void @testlib_append_check(ptr %to_check, ptr %to_check_i, ptr %ptr1, i64 %s1)
+	call void @testlib_append_check(ptr %to_check, ptr %to_check_i, ptr %ptr1, i64 %counter)
+	%ptr1e = call ptr @testlib_end(ptr %ptr1, i64 %s1)
+	call void @testlib_append_check(ptr %to_check, ptr %to_check_i, ptr %ptr1e, i64 %counter)
 
 	%s2 = call i64 @testlib_alloc_size(i64 %counter, i64 1)
 	%ptr2 = call ptr @alloc_acquire(i64 %s2)
 
 	%s3 = call i64 @testlib_alloc_size(i64 %counter, i64 2)
 	%ptr3 = call ptr @alloc_acquire(i64 %s3)
-	call void @testlib_append_check(ptr %to_check, ptr %to_check_i, ptr %ptr3, i64 %s3)
+	call void @testlib_append_check(ptr %to_check, ptr %to_check_i, ptr %ptr3, i64 %counter)
+	%ptr3e = call ptr @testlib_end(ptr %ptr3, i64 %s3)
+	call void @testlib_append_check(ptr %to_check, ptr %to_check_i, ptr %ptr3e, i64 %counter)
 
 	call void @alloc_release(ptr %ptr2, i64 %s2)
 
