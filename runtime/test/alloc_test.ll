@@ -37,18 +37,66 @@ define private void @test_alloc_slot() alwaysinline {
 }
 
 ; Array size must match @testlib_alloc_size and should not be a multiple of 3
-@test_alloc_sizes = global [5 x i64] [i64 14, i64 2, i64 64, i64 262144, i64 262145]
+@test_alloc_sizes = global [7 x i64] [i64 14, i64 2, i64 64, i64 63, i64 129, i64 262144, i64 262145]
 
 define private i64 @testlib_alloc_size(i64 %counter, i64 %offset) alwaysinline {
 	%with_offset = add i64 %counter, %offset
-	%index = urem i64 %with_offset, 5
+	%index = urem i64 %with_offset, 7
 	%ptr = getelementptr i64, ptr @test_alloc_sizes, i64 %index
 	%val = load i64, ptr %ptr
 	ret i64 %val
 }
 
+%check = type { ptr, i64 }
+
+define private void @testlib_append_check(ptr %to_check, ptr %to_check_i, ptr %loc, i64 %val) alwaysinline {
+	store i64 %val, ptr %loc
+
+	%i = load i64, ptr %to_check_i
+
+	%slot_loc = getelementptr %check, ptr %to_check, i64 %i, i32 0
+	store ptr %loc, ptr %slot_loc
+
+	%slot_val = getelementptr %check, ptr %to_check, i64 %i, i32 1
+	store i64 %val, ptr %slot_val
+
+	%next_i = add i64 %i, 1
+	store i64 %next_i, ptr %to_check_i
+
+	ret void
+}
+
+define private void @testlib_check(ptr %to_check, ptr %to_check_i) alwaysinline {
+entry:
+	br label %loop
+
+loop:
+	%prev_i = load i64, ptr %to_check_i
+	%i = sub i64 %prev_i, 1
+	store i64 %i, ptr %to_check_i
+
+	%slot_loc = getelementptr %check, ptr %to_check, i64 %i, i32 0
+	%loc = load ptr, ptr %slot_loc
+	%val = load i64, ptr %loc
+
+	%slot_val_expected = getelementptr %check, ptr %to_check, i64 %i, i32 1
+	%val_expected = load i64, ptr %slot_val_expected
+
+	call void @abort_if_not_equal(i64 %val_expected, i64 %val)
+
+	%done = icmp eq i64 %i, 0
+	br i1 %done, label %afterloop, label %loop
+
+afterloop:
+	ret void
+}
+
 define private void @test_alloc_acquire() alwaysinline {
 entry:
+	%to_check = alloca %check, i64 300
+	%to_check_i = alloca i64
+	store i64 0, ptr %to_check_i
+
 	br label %loop
 
 loop:
@@ -56,24 +104,14 @@ loop:
 
 	%s1 = call i64 @testlib_alloc_size(i64 %counter, i64 0)
 	%ptr1 = call ptr @alloc_acquire(i64 %s1)
-	store i64 %s1, ptr %ptr1
+	call void @testlib_append_check(ptr %to_check, ptr %to_check_i, ptr %ptr1, i64 %s1)
 
 	%s2 = call i64 @testlib_alloc_size(i64 %counter, i64 1)
 	%ptr2 = call ptr @alloc_acquire(i64 %s2)
-	store i64 %s2, ptr %ptr2
 
 	%s3 = call i64 @testlib_alloc_size(i64 %counter, i64 2)
 	%ptr3 = call ptr @alloc_acquire(i64 %s3)
-	store i64 %s3, ptr %ptr3
-
-	%v1 = load i64, ptr %ptr1
-	call void @abort_if_not_equal(i64 %v1, i64 %s1)
-
-	%v2 = load i64, ptr %ptr2
-	call void @abort_if_not_equal(i64 %v2, i64 %s2)
-
-	%v3 = load i64, ptr %ptr3
-	call void @abort_if_not_equal(i64 %v3, i64 %s3)
+	call void @testlib_append_check(ptr %to_check, ptr %to_check_i, ptr %ptr3, i64 %s3)
 
 	call void @alloc_release(ptr %ptr2, i64 %s2)
 
@@ -82,5 +120,7 @@ loop:
 	br i1 %continue, label %loop, label %afterloop
 
 afterloop:
+	call void @testlib_check(ptr %to_check, ptr %to_check_i)
+
 	ret void
 }
