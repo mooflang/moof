@@ -3,14 +3,26 @@ set shell := [ "bash", "-c" ]
 default:
 	@just test
 
-build-test:
+alloc_test:
 	@just build alloc_test \
+		generic/abort.ll \
+		generic/alloc.ll \
+		linux-x86_64/sys.ll \
+		linux-x86_64/thread.ll \
+		test/alloc_test.ll
+	
+	bin/alloc_test
+
+ref_test:
+	@just build ref_test \
 		generic/abort.ll \
 		generic/alloc.ll \
 		generic/ref.ll \
 		linux-x86_64/sys.ll \
 		linux-x86_64/thread.ll \
-		test/alloc_test.ll
+		test/ref_test.ll
+
+	bin/ref_test
 
 build output +sources:
 	llvm-link-17 -S -o tmp/{{file_stem(output)}}.ll {{sources}}
@@ -18,16 +30,8 @@ build output +sources:
 	ld.lld-17 -o bin/{{output}} tmp/{{file_stem(output)}}.o
 
 test:
-	@just build-test
-	bin/alloc_test
+	@just alloc_test
+	@just ref_test
 
 clean:
 	rm -f bin/* tmp/*
-
-strace:
-	@just build-test
-	strace -x bin/alloc_test >/dev/null
-
-time:
-	@just build-test
-	time bin/alloc_test
