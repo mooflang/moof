@@ -3,7 +3,7 @@ target triple = "x86_64-pc-linux-gnu"
 declare ptr @alloc_acquire(i64)
 declare void @alloc_release(ptr, i64)
 
-%ref_wrap = type { i64, i8 }
+%ref_wrap = type { i64, [0 x i8] }
 
 ; Allocate a reference-counted object with 1 reference
 define ptr @ref_new(i64 %bytes) alwaysinline {
