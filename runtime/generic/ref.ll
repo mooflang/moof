@@ -5,6 +5,7 @@ declare void @alloc_release(ptr, i64)
 
 %ref_wrap = type { i64, i8 }
 
+; Allocate a reference-counted object with 1 reference
 define ptr @ref_new(i64 %bytes) alwaysinline {
     %wrap_bytes = call i64 @ref_wrap_bytes(i64 %bytes)
     %wrap = call ptr @alloc_acquire(i64 %wrap_bytes)
@@ -15,6 +16,7 @@ define ptr @ref_new(i64 %bytes) alwaysinline {
     ret ptr %base
 }
 
+; Increase the reference count of an object by 1
 define void @ref_acquire(ptr %base) alwaysinline {
     %wrap = call ptr @ref_base_to_wrap(ptr %base)
     atomicrmw add ptr %wrap, i64 1 monotonic
@@ -22,6 +24,7 @@ define void @ref_acquire(ptr %base) alwaysinline {
     ret void
 }
 
+; Decrease the reference count of an object by 1 and deallocate it if this is the last reference
 define void @ref_release(ptr %base, i64 %bytes) alwaysinline {
     %wrap = call ptr @ref_base_to_wrap(ptr %base)
     %old_cnt = atomicrmw sub ptr %wrap, i64 1 monotonic
