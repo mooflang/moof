@@ -25,8 +25,6 @@ define void @test_task() {
 }
 
 @test_task_val = private constant i64 u0x12345678
-@test_task_val2 = private constant i64 u0x2345678A
-
 
 define void @test_task_chain_0(ptr %args) {
     %t = call ptr @task_new(ptr @test_task_chain_1, i64 1)
