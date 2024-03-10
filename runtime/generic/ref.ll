@@ -3,7 +3,10 @@ target triple = "x86_64-pc-linux-gnu"
 declare ptr @alloc_acquire(i64)
 declare void @alloc_release(ptr, i64)
 
-%ref_wrap = type { i64, [0 x i8] }
+%ref_wrap = type {
+    i64, ; reference count
+    [0 x i8] ; caller data
+}
 
 ; Allocate a reference-counted object with 1 reference
 define ptr @ref_new(i64 %bytes) alwaysinline {
@@ -46,34 +49,34 @@ done:
     ret void
 }
 
-; Constant calculation of %ref_wrap start to caller base location
+; Constant calculation of %ref_wrap start to caller data start
 define private i64 @ref_wrap_to_base_offset() alwaysinline {
     %wtb_ptr = getelementptr %ref_wrap, ptr null, i64 0, i32 1
     %wtb = ptrtoint ptr %wtb_ptr to i64
     ret i64 %wtb
 }
 
-; Constant calculation of %ref_wrap caller base location to start (negative value)
+; Constant calculation of caller data start to %ref_wrap start (negative value)
 define private i64 @ref_base_to_wrap_offset() alwaysinline {
     %wtb = call i64 @ref_wrap_to_base_offset()
     %btw = sub i64 0, %wtb
     ret i64 %btw
 }
 
-; Calculate number of bytes to allocate for caller request plus wrapper
+; Calculate number of bytes to allocate for caller data plus %ref_wrap
 define private i64 @ref_wrap_bytes(i64 %bytes) alwaysinline {
     %wtb = call i64 @ref_wrap_to_base_offset()
     %wrap_bytes = add i64 %bytes, %wtb
     ret i64 %wrap_bytes
 }
 
-; Calculate caller base location from %ref_wrap start
+; Calculate caller data start from %ref_wrap start
 define private ptr @ref_wrap_to_base(ptr %wrap) alwaysinline {
     %base = getelementptr %ref_wrap, ptr %wrap, i64 0, i32 1
     ret ptr %base
 }
 
-; Calculate %ref_wrap start from caller base location
+; Calculate %ref_wrap start from caller data start
 define private ptr @ref_base_to_wrap(ptr %base) alwaysinline {
     %btw = call i64 @ref_base_to_wrap_offset()
     %wrap = getelementptr i8, ptr %base, i64 %btw

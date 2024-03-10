@@ -24,6 +24,17 @@ ref_test:
 
 	bin/ref_test
 
+task_test:
+	@just build task_test \
+		generic/abort.ll \
+		generic/alloc.ll \
+		generic/task.ll \
+		linux-x86_64/sys.ll \
+		linux-x86_64/thread.ll \
+		test/task_test.ll
+
+	bin/task_test
+
 build output +sources:
 	llvm-link-17 -S -o tmp/{{file_stem(output)}}.ll {{sources}}
 	llc-17 -O=3 -filetype=obj -o tmp/{{file_stem(output)}}.o tmp/{{file_stem(output)}}.ll
@@ -32,6 +43,7 @@ build output +sources:
 test:
 	@just alloc_test
 	@just ref_test
+	@just task_test
 
 clean:
 	rm -f bin/* tmp/*
