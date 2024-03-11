@@ -13,17 +13,17 @@ alloc_test:
 	
 	bin/alloc_test
 
-data_test:
-	@just build data_test \
+blob_test:
+	@just build blob_test \
 		generic/abort.ll \
 		generic/alloc.ll \
-		generic/data.ll \
+		generic/blob.ll \
 		generic/ref.ll \
 		linux-x86_64/sys.ll \
 		linux-x86_64/thread.ll \
-		test/data_test.ll
+		test/blob_test.ll
 	
-	bin/data_test
+	bin/blob_test
 
 ref_test:
 	@just build ref_test \
@@ -54,7 +54,7 @@ build output +sources:
 
 test:
 	@just alloc_test
-	@just data_test
+	@just blob_test
 	@just ref_test
 	@just task_test
 
