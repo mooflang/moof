@@ -1,8 +1,3 @@
-target triple = "x86_64-pc-linux-gnu"
-
-declare ptr @alloc_acquire(i64)
-declare void @alloc_release(ptr, i64)
-
 %task = type {
     i64, ; task bytes
     ptr, ; next task

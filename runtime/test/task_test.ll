@@ -1,15 +1,3 @@
-target triple = "x86_64-pc-linux-gnu"
-
-declare void @abort()
-declare void @abort_if_not_equal(i64, i64)
-declare void @sys_exit_group(i64)
-declare void @task_add(ptr)
-declare void @task_loop()
-declare ptr @task_get_arg(ptr, i64)
-declare ptr @task_new(ptr, i64)
-declare void @task_set_arg(ptr, i64, ptr)
-declare void @thread_tls_init()
-
 define void @_start() {
 	call void @thread_tls_init()
 

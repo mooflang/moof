@@ -1,16 +1,8 @@
-target triple = "x86_64-pc-linux-gnu"
-
 ; TODO: alloc_thread_data(), alloc_thread_adopt()
 
 declare i64 @llvm.ctlz(i64, i1)
 declare i64 @llvm.cttz(i64, i1)
 declare i64 @llvm.umax(i64, i64)
-
-declare void @abort_if_nonzero(i64)
-declare void @abort_if_null(ptr)
-
-declare i64 @sys_mmap2(ptr, i64, i64, i64, i64, i64)
-declare i64 @sys_munmap(ptr, i64)
 
 @alloc_heads = private thread_local(localexec) global [16 x ptr] zeroinitializer
 

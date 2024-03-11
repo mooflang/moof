@@ -1,5 +1,3 @@
-target triple = "x86_64-pc-linux-gnu"
-
 define i64 @sys_arch_prctl(i64 %code, ptr %addr) alwaysinline {
 	%1 = call i64 asm sideeffect "syscall", "={rax},{rax},{rdi},{rsi}"(i64 158, i64 %code, ptr %addr)
 	ret i64 %1

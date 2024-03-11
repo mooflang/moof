@@ -1,8 +1,3 @@
-target triple = "x86_64-pc-linux-gnu"
-
-declare i64 @sys_getpid()
-declare i64 @sys_kill(i64, i64)
-
 define void @abort() alwaysinline {
 	%pid = call i64 @sys_getpid()
 	call void @sys_kill(i64 %pid, i64 6) ; SIGABRT

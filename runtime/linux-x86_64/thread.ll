@@ -1,10 +1,4 @@
-target triple = "x86_64-pc-linux-gnu"
-
 ; TODO: thread_tls_deinit()
-
-declare i64 @abort_if_nonzero(i64)
-declare i64 @sys_arch_prctl(i64, ptr)
-declare i64 @sys_mmap2(ptr, i64, i64, i64, i64, i64)
 
 @thread_tls_bytes = private constant i64 u0x00001000
 
