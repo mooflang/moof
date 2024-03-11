@@ -10,6 +10,7 @@ declare void @alloc_release(ptr, i64)
     [0 x ptr] ; task arguments
 }
 
+; TODO: thread safety
 @task_head = private global ptr zeroinitializer
 
 ; Donate this thread as a task runner

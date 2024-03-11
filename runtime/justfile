@@ -13,6 +13,18 @@ alloc_test:
 	
 	bin/alloc_test
 
+data_test:
+	@just build data_test \
+		generic/abort.ll \
+		generic/alloc.ll \
+		generic/data.ll \
+		generic/ref.ll \
+		linux-x86_64/sys.ll \
+		linux-x86_64/thread.ll \
+		test/data_test.ll
+	
+	bin/data_test
+
 ref_test:
 	@just build ref_test \
 		generic/abort.ll \
@@ -42,6 +54,7 @@ build output +sources:
 
 test:
 	@just alloc_test
+	@just data_test
 	@just ref_test
 	@just task_test
 
