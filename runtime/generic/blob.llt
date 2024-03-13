@@ -1,0 +1,5 @@
+%blob = type {
+    %object,
+    i64, ; bytes
+    [ 0 x i8 ] ; data
+}

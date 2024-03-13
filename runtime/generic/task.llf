@@ -1,0 +1,5 @@
+declare void @task_loop()
+declare void @task_add(ptr)
+declare ptr @task_new(ptr, i64)
+declare void @task_set_arg(ptr, i64, ptr)
+declare ptr @task_get_arg(ptr, i64)

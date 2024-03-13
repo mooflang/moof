@@ -1,0 +1,1 @@
+declare ptr @object_new(i64)

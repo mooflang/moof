@@ -3,6 +3,8 @@ set shell := [ "bash", "-c" ]
 default:
 	@just test
 
+runtime_llh:
+
 alloc_test:
 	@just build alloc_test \
 		generic/abort.ll \
@@ -50,7 +52,22 @@ task_test:
 	bin/task_test
 
 build output +sources:
-	cat {{sources}} | llvm-link-19 -S -o tmp/{{file_stem(output)}}.ll -
+	for SOURCE in {{sources}}; do \
+		( \
+			find generic linux-x86_64 \
+				\( \
+					-name '*.llf' \
+					-o -name '*.llt' \
+				\) \
+				-a -not -wholename ${SOURCE}f \
+				-exec echo '; {}' ';' \
+				-exec cat '{}' ';' \
+				-exec echo ';'; \
+			echo "; $SOURCE"; \
+			cat $SOURCE; \
+		) > tmp/`basename $SOURCE`; \
+	done
+	llvm-link-19 -S -o tmp/{{file_stem(output)}}.ll $(for SOURCE in {{sources}}; do echo tmp/`basename $SOURCE`; done)
 	llc-19 -O=3 -filetype=obj -o tmp/{{file_stem(output)}}.o tmp/{{file_stem(output)}}.ll
 	ld.lld-17 -o bin/{{output}} tmp/{{file_stem(output)}}.o
 

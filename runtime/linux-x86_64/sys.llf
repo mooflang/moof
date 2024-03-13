@@ -1,0 +1,7 @@
+declare i64 @sys_arch_prctl(i64, ptr)
+declare void @sys_exit_group(i64)
+declare i64 @sys_getpid()
+declare i64 @sys_kill(i64, i64)
+declare ptr @sys_mmap2(ptr, i64, i64, i64, i64, i64)
+declare i64 @sys_munmap(ptr, i64)
+declare i64 @sys_write(i64, ptr, i64)

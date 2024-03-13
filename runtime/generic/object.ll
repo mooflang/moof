@@ -1,7 +1,3 @@
-%object = type {
-    i64 ; reference count
-}
-
 ; Allocate and initialize a new object
 define ptr @object_new(i64 %bytes) alwaysinline {
     %o = call ptr @alloc_acquire(i64 %bytes)

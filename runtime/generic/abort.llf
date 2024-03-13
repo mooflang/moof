@@ -1,0 +1,4 @@
+declare void @abort()
+declare void @abort_if_nonzero(i64)
+declare void @abort_if_not_equal(i64, i64)
+declare void @abort_if_null(ptr)

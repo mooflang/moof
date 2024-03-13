@@ -1,10 +1,3 @@
-%task = type {
-    i64, ; task bytes
-    ptr, ; next task
-    ptr, ; task function
-    [0 x ptr] ; task arguments
-}
-
 ; TODO: thread safety
 @task_head = private global ptr zeroinitializer
 

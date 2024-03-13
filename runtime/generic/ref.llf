@@ -1,0 +1,3 @@
+declare void @ref_init(ptr)
+declare void @ref_acquire(ptr)
+declare void @ref_release(ptr, i64)

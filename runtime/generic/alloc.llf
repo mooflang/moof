@@ -1,0 +1,8 @@
+declare ptr @alloc_acquire(i64)
+declare void @alloc_release(ptr, i64)
+declare ptr @alloc_acquire_direct(i64)
+declare ptr @alloc_acquire_pool(i64, i64)
+declare void @alloc_release_direct(ptr, i64)
+declare void @alloc_release_pool(ptr, i64)
+declare i64 @alloc_block_bytes(i64)
+declare i64 @alloc_slot(i64)
