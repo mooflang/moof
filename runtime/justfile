@@ -3,55 +3,42 @@ set shell := [ "bash", "-c" ]
 default:
 	@just test
 
-runtime_llh:
-
 alloc_test:
 	@just build alloc_test \
-		generic/abort.ll \
-		generic/alloc.ll \
-		linux-x86_64/sys.ll \
-		linux-x86_64/thread.ll \
 		test/alloc_test.ll
 	
 	bin/alloc_test
 
 blob_test:
 	@just build blob_test \
-		generic/abort.ll \
-		generic/alloc.ll \
-		generic/object.ll \
-		generic/blob.ll \
-		generic/ref.ll \
-		linux-x86_64/sys.ll \
-		linux-x86_64/thread.ll \
 		test/blob_test.ll
 	
 	bin/blob_test
 
 ref_test:
 	@just build ref_test \
-		generic/abort.ll \
-		generic/alloc.ll \
-		generic/object.ll \
-		generic/ref.ll \
-		linux-x86_64/sys.ll \
-		linux-x86_64/thread.ll \
 		test/ref_test.ll
 
 	bin/ref_test
 
 task_test:
 	@just build task_test \
-		generic/abort.ll \
-		generic/alloc.ll \
-		generic/task.ll \
-		linux-x86_64/sys.ll \
-		linux-x86_64/thread.ll \
 		test/task_test.ll
 
 	bin/task_test
 
-build output +sources:
+runtime:
+	@just llvm_link runtime.ll \
+		generic/abort.ll \
+		generic/alloc.ll \
+		generic/blob.ll \
+		generic/object.ll \
+		generic/ref.ll \
+		generic/task.ll \
+		linux-x86_64/sys.ll \
+		linux-x86_64/thread.ll
+
+llvm_link output +sources:
 	for SOURCE in {{sources}}; do \
 		( \
 			find generic linux-x86_64 \
@@ -67,11 +54,16 @@ build output +sources:
 			cat $SOURCE; \
 		) > tmp/`basename $SOURCE`; \
 	done
-	llvm-link-19 -S -o tmp/{{file_stem(output)}}.ll $(for SOURCE in {{sources}}; do echo tmp/`basename $SOURCE`; done)
-	llc-19 -O=3 -filetype=obj -o tmp/{{file_stem(output)}}.o tmp/{{file_stem(output)}}.ll
-	ld.lld-17 -o bin/{{output}} tmp/{{file_stem(output)}}.o
+
+	llvm-link-19 -S -o tmp/{{output}} $(for SOURCE in {{sources}}; do echo tmp/`basename $SOURCE`; done)
+
+build output +sources:
+	cat tmp/runtime.ll {{sources}} | llvm-link-19 -S -o tmp/{{output}}.ll -
+	llc-19 -O=3 -filetype=obj -o tmp/{{output}}.o tmp/{{output}}.ll
+	ld.lld-17 -o bin/{{output}} tmp/{{output}}.o
 
 test:
+	@just runtime
 	@just alloc_test
 	@just blob_test
 	@just ref_test
