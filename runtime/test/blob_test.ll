@@ -8,7 +8,9 @@ define void @_start() {
 }
 
 define void @test_blob() alwaysinline {
-	%b = call ptr @blob_new(i64 10)
+	%i = call ptr @int_new(i64 10)
+	%b = call ptr @blob_new(ptr %i)
+	call void @int_release(ptr %i)
 	call void @blob_release(ptr %b)
 	ret void
 }

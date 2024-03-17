@@ -1,0 +1,4 @@
+declare ptr @int_new(i64)
+declare void @int_release(ptr)
+declare i64 @int_bytes()
+declare i64 @int_val(ptr)

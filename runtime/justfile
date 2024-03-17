@@ -32,6 +32,7 @@ runtime:
 		generic/abort.ll \
 		generic/alloc.ll \
 		generic/blob.ll \
+		generic/int.ll \
 		generic/object.ll \
 		generic/ref.ll \
 		generic/task.ll \

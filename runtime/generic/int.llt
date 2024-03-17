@@ -1,0 +1,4 @@
+%int = type {
+    %object,
+    i64 ; value
+}

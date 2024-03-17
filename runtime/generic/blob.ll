@@ -1,4 +1,6 @@
-define ptr @blob_new(i64 %bytes) alwaysinline {
+define ptr @blob_new(ptr %int.bytes) alwaysinline {
+    %bytes = call i64 @int_val(ptr %int.bytes)
+
     %blob_bytes = call i64 @blob_bytes(i64 %bytes)
     %b = call ptr @object_new(i64 %blob_bytes)
 

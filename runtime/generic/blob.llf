@@ -1,1 +1,3 @@
 declare ptr @blob_new(i64)
+declare void @blob_release(ptr)
+declare i64 @blob_bytes(i64)
