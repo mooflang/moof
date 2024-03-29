@@ -1,5 +1,5 @@
 define void @_start() {
-	call void @thread_tls_init()
+	call void @init()
 
     call void @test_ref_large()
 
